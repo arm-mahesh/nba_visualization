@@ -44,9 +44,6 @@ class FantasyDashboard(QMainWindow):
         player_stats_widget = QWidget()
         layout = QVBoxLayout(player_stats_widget)
         self.all_players = players.get_active_players()
-        # Tabs for different sections
-        self.tabs = QTabWidget()
-        self.layout.addWidget(self.tabs)
 
         # Player Stats Tab
         self.player_stats_tab = QWidget()
@@ -161,6 +158,7 @@ class FantasyDashboard(QMainWindow):
 
         # Add this tab to the main widget
         self.tabs.addTab(position_filter_widget, "Position Filter")
+
 
     def load_all_players(self):
         """Load all players into the player list widget."""
