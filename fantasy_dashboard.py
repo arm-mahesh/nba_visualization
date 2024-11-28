@@ -147,7 +147,7 @@ class FantasyDashboard(QMainWindow):
         layout.addWidget(self.metric_label)
 
         self.metric_dropdown = QComboBox()
-        self.metric_dropdown.addItems(["Fantasy Score", "Points Per Game", "Assists", "Rebounds", "Efficiency"])
+        self.metric_dropdown.addItems(["Fantasy Score", "Points Per Game", "Assists", "Rebounds", "Efficiency", "Steals", "Blocks"])
         self.metric_dropdown.currentIndexChanged.connect(self.update_plot)
         layout.addWidget(self.metric_dropdown)
 
@@ -264,8 +264,11 @@ class FantasyDashboard(QMainWindow):
         df['Rebounds'] = df['REB'] / df['GP']
         df['Assists'] = df['AST'] / df['GP']
         df['Efficiency'] = (df['PTS'] + df['REB'] + df['AST']) / df['GP']
+        df['Steals'] = df['STL'] / df['GP']
+        df['Blocks'] = df['BLK'] / df['GP']
 
-        return df[['SEASON_ID', 'Fantasy Score', 'Points Per Game', 'Assists', 'Rebounds', 'Efficiency']]
+
+        return df[['SEASON_ID', 'Fantasy Score', 'Points Per Game', 'Assists', 'Rebounds', 'Efficiency', 'Steals', 'Blocks']]
 
     def update_plot(self):
         """Update the plot based on selected metric."""
