@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit,
-    QPushButton, QHBoxLayout, QCompleter, QTabWidget, QListWidget
+    QPushButton, QHBoxLayout, QCompleter, QTabWidget, QListWidget, QFormLayout
 )
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -25,6 +25,15 @@ class FantasyDashboard(QMainWindow):
         self.data_1 = None
         self.data_2 = None
 
+        self.fantasy_settings = {
+            'PTS': 1,
+            'REB': 1.2,
+            'AST': 1.5,
+            'STL': 3,
+            'BLK': 3,
+            'TO': -1
+        }
+
         # Create tabs and add them to the tab widget
         with open('player_positions.json', 'r') as f:
             self.player_positions = json.load(f)
@@ -38,6 +47,56 @@ class FantasyDashboard(QMainWindow):
         # Create tabs
         self.create_player_stats_tab()
         self.create_position_filter_tab()
+        self.create_settings_tab()
+
+    def create_settings_tab(self):
+        """Create the Settings tab."""
+        settings_widget = QWidget()
+        layout = QVBoxLayout(settings_widget)
+
+        # Form layout for fantasy point settings
+        form_layout = QFormLayout()
+
+        self.pts_input = QLineEdit(str(self.fantasy_settings['PTS']))
+        form_layout.addRow("Fantasy Points for PTS:", self.pts_input)
+
+        self.reb_input = QLineEdit(str(self.fantasy_settings['REB']))
+        form_layout.addRow("Fantasy Points for REB:", self.reb_input)
+
+        self.ast_input = QLineEdit(str(self.fantasy_settings['AST']))
+        form_layout.addRow("Fantasy Points for AST:", self.ast_input)
+
+        self.stl_input = QLineEdit(str(self.fantasy_settings['STL']))
+        form_layout.addRow("Fantasy Points for STL:", self.stl_input)
+
+        self.blk_input = QLineEdit(str(self.fantasy_settings['BLK']))
+        form_layout.addRow("Fantasy Points for BLK:", self.blk_input)
+
+        self.to_input = QLineEdit(str(self.fantasy_settings['TO']))
+        form_layout.addRow("Fantasy Points for TO:", self.to_input)
+
+        layout.addLayout(form_layout)
+
+        # Save Button
+        save_button = QPushButton("Save Settings")
+        save_button.clicked.connect(self.save_settings)
+        layout.addWidget(save_button)
+
+        self.tabs.addTab(settings_widget, "Settings")
+
+    def save_settings(self):
+        """Save the custom fantasy points settings."""
+        try:
+            self.fantasy_settings['PTS'] = float(self.pts_input.text())
+            self.fantasy_settings['REB'] = float(self.reb_input.text())
+            self.fantasy_settings['AST'] = float(self.ast_input.text())
+            self.fantasy_settings['STL'] = float(self.stl_input.text())
+            self.fantasy_settings['BLK'] = float(self.blk_input.text())
+            self.fantasy_settings['TO'] = float(self.to_input.text())
+
+            print("Settings saved successfully.")
+        except ValueError:
+            print("Invalid input. Please enter numeric values.")
 
     def create_player_stats_tab(self):
         """Create the Player Stats tab."""
@@ -192,14 +251,14 @@ class FantasyDashboard(QMainWindow):
         if 'TO' not in df.columns:
             df['TO'] = 0
 
-        # Add fantasy score
+        # Add fantasy score using user-defined settings
         df['Fantasy Score'] = (
-            df['PTS'] * 1 +
-            df['REB'] * 1.2 +
-            df['AST'] * 1.5 +
-            df['STL'] * 3 +
-            df['BLK'] * 3 -
-            df['TO'] * 1
+            df['PTS'] * self.fantasy_settings['PTS'] +
+            df['REB'] * self.fantasy_settings['REB'] +
+            df['AST'] * self.fantasy_settings['AST'] +
+            df['STL'] * self.fantasy_settings['STL'] +
+            df['BLK'] * self.fantasy_settings['BLK'] -
+            df['TO'] * self.fantasy_settings['TO']
         )
         df['Points Per Game'] = df['PTS'] / df['GP']
         df['Rebounds'] = df['REB'] / df['GP']
@@ -270,12 +329,12 @@ class FantasyDashboard(QMainWindow):
         df['Rebounds Per Game'] = df['REB'] / df['GP']
         df['Assists Per Game'] = df['AST'] / df['GP']
         df['Fantasy Score Per Game'] = (
-            df['Points Per Game'] * 1 +
-            df['Rebounds Per Game'] * 1.2 +
-            df['Assists Per Game'] * 1.5 +
-            df['STL'] / df['GP'] * 3 +
-            df['BLK'] / df['GP'] * 3 -
-            df['TO'] / df['GP'] * 1
+            df['Points Per Game'] * self.fantasy_settings['PTS'] +
+            df['Rebounds Per Game'] * self.fantasy_settings['REB'] +
+            df['Assists Per Game'] * self.fantasy_settings['AST'] +
+            df['STL'] / df['GP'] * self.fantasy_settings['STL'] +
+            df['BLK'] / df['GP'] * self.fantasy_settings['BLK'] -
+            df['TO'] / df['GP'] * self.fantasy_settings['TO']
         )
 
         # Take projections as the most recent season's per-game stats
