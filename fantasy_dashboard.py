@@ -151,6 +151,14 @@ class FantasyDashboard(QMainWindow):
         self.metric_dropdown.currentIndexChanged.connect(self.update_plot)
         layout.addWidget(self.metric_dropdown)
 
+        self.normalization_label = QLabel("Normalize Data By:")
+        layout.addWidget(self.normalization_label)
+
+        self.normalization_dropdown = QComboBox()
+        self.normalization_dropdown.addItems(["Season Year", "Career Year"])
+        self.normalization_dropdown.currentIndexChanged.connect(self.update_plot)
+        layout.addWidget(self.normalization_dropdown)
+
         # Matplotlib figure for comparison
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -280,36 +288,63 @@ class FantasyDashboard(QMainWindow):
 
         # Get selected metric
         metric = self.metric_dropdown.currentText()
+        
+        # Get normalization choice
+        normalize_by = self.normalization_dropdown.currentText()
 
+        # Create a combined dataframe with both players' data
+        combined_df = pd.DataFrame()
+
+        # Normalize player data based on the selected normalization choice
+        if normalize_by == "Career Year":
+            def normalize_by_career_year(df):
+                df['Career Year'] = df['SEASON_ID'].index + 1
+                return df
+
+            if self.data_1 is not None:
+                self.data_1 = normalize_by_career_year(self.data_1)
+                self.data_1['Player'] = self.current_player_1['full_name']
+                combined_df = pd.concat([combined_df, self.data_1[['Career Year', metric, 'Player']]])
+
+            if self.data_2 is not None:
+                self.data_2 = normalize_by_career_year(self.data_2)
+                self.data_2['Player'] = self.current_player_2['full_name']
+                combined_df = pd.concat([combined_df, self.data_2[['Career Year', metric, 'Player']]])
+
+            x_axis_label = "Career Year"
+        else:
+            if self.data_1 is not None:
+                self.data_1['Player'] = self.current_player_1['full_name']
+                combined_df = pd.concat([combined_df, self.data_1[['SEASON_ID', metric, 'Player']]])
+
+            if self.data_2 is not None:
+                self.data_2['Player'] = self.current_player_2['full_name']
+                combined_df = pd.concat([combined_df, self.data_2[['SEASON_ID', metric, 'Player']]])
+
+            x_axis_label = "Season"
+
+        # Sort the dataframe by SEASON_ID or Career Year to align the seasons properly
+        combined_df = combined_df.sort_values(by='SEASON_ID' if normalize_by == "Season Year" else 'Career Year')
+
+        # Plot the data
         ax = self.figure.add_subplot(111)
-
-        # Plot Player 1's data
-        if self.data_1 is not None:
+        for player_name in combined_df['Player'].unique():
+            player_data = combined_df[combined_df['Player'] == player_name]
             ax.plot(
-                self.data_1['SEASON_ID'],
-                self.data_1[metric],
-                marker='o',
-                label=self.current_player_1['full_name']
-            )
-
-        # Plot Player 2's data
-        if self.data_2 is not None:
-            ax.plot(
-                self.data_2['SEASON_ID'],
-                self.data_2[metric],
-                marker='x',
-                label=self.current_player_2['full_name']
+                player_data['SEASON_ID' if normalize_by == "Season Year" else 'Career Year'],
+                player_data[metric],
+                marker='o' if player_name == self.current_player_1['full_name'] else 'x',
+                label=player_name
             )
 
         # Update plot aesthetics
-        ax.set_title(f"{metric} Over Seasons")
-        ax.set_xlabel("Season")
+        ax.set_title(f"{metric} Over {x_axis_label}")
+        ax.set_xlabel(x_axis_label)
         ax.set_ylabel(metric)
         ax.legend()
         ax.grid(True)
 
         self.canvas.draw()
-
     def generate_projections(self):
         """Generate per-game projections for the selected player."""
         player_name = self.projection_search_bar.text()
