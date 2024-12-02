@@ -1,11 +1,13 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QComboBox, QLineEdit,
-    QPushButton, QHBoxLayout, QCompleter, QTabWidget, QListWidget, QFormLayout
+    QPushButton, QHBoxLayout, QCompleter, QTabWidget, QListWidget, QFormLayout, QGraphicsDropShadowEffect
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QFont, QColor, QPalette
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import time
 import json
 import pandas as pd
@@ -13,13 +15,78 @@ from requests.exceptions import ReadTimeout
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats, commonplayerinfo
 
+class StyledQLabel(QLabel):
+    """Custom label with improved styling"""
+    def __init__(self, text, font_size=12, bold=False, color='#333'):
+        super().__init__(text)
+        font = QFont('Arial', font_size)
+        if bold:
+            font.setBold(True)
+        self.setFont(font)
+        self.setStyleSheet(f"color: {color};")
+
+class StyledQPushButton(QPushButton):
+    """Custom button with modern styling"""
+    def __init__(self, text):
+        super().__init__(text)
+        self.setStyleSheet("""
+            QPushButton {
+                background-color: #2C3E50;
+                color: white;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #34495E;
+            }
+            QPushButton:pressed {
+                background-color: #2980B9;
+            }
+        """)
+        # Add subtle shadow effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor("#888888"))
+        shadow.setOffset(3, 3)
+        self.setGraphicsEffect(shadow)
+
 
 class FantasyDashboard(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Fantasy Basketball Dashboard")
-        self.setGeometry(100, 100, 1200, 800)
+        # Set up modern color palette
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #ECF0F1;
+            }
+            QTabWidget::pane {
+                background-color: white;
+                border-radius: 10px;
+            }
+            QTabBar::tab {
+                background-color: #3498DB;
+                color: white;
+                padding: 10px;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }
+            QTabBar::tab:selected {
+                background-color: #2980B9;
+            }
+            QLineEdit, QComboBox {
+                padding: 6px;
+                border: 1px solid #BDC3C7;
+                border-radius: 5px;
+            }
+        """)
 
+        # Rest of the initialization remains the same as in the original code
+        self.setWindowTitle("Fantasy Basketball Dashboard")
+        self.setGeometry(100, 100, 1400, 900)
+
+        # Matplotlib style
+        plt.style.use('bmh')
         self.current_player_1 = None
         self.current_player_2 = None
         self.data_1 = None
@@ -50,35 +117,42 @@ class FantasyDashboard(QMainWindow):
         self.create_settings_tab()
 
     def create_settings_tab(self):
-        """Create the Settings tab."""
+        """Create the Settings tab with improved styling"""
         settings_widget = QWidget()
         layout = QVBoxLayout(settings_widget)
+        layout.setSpacing(15)
+
+        # Title for settings
+        title = StyledQLabel("Fantasy Points Settings", font_size=16, bold=True, color='#2C3E50')
+        layout.addWidget(title)
 
         # Form layout for fantasy point settings
         form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_layout.setFormAlignment(Qt.AlignmentFlag.AlignCenter)
+        form_layout.setSpacing(10)
 
-        self.pts_input = QLineEdit(str(self.fantasy_settings['PTS']))
-        form_layout.addRow("Fantasy Points for PTS:", self.pts_input)
+        stats = [
+            ('PTS', "Points"),
+            ('REB', "Rebounds"),
+            ('AST', "Assists"),
+            ('STL', "Steals"),
+            ('BLK', "Blocks"),
+            ('TO', "Turnovers")
+        ]
 
-        self.reb_input = QLineEdit(str(self.fantasy_settings['REB']))
-        form_layout.addRow("Fantasy Points for REB:", self.reb_input)
-
-        self.ast_input = QLineEdit(str(self.fantasy_settings['AST']))
-        form_layout.addRow("Fantasy Points for AST:", self.ast_input)
-
-        self.stl_input = QLineEdit(str(self.fantasy_settings['STL']))
-        form_layout.addRow("Fantasy Points for STL:", self.stl_input)
-
-        self.blk_input = QLineEdit(str(self.fantasy_settings['BLK']))
-        form_layout.addRow("Fantasy Points for BLK:", self.blk_input)
-
-        self.to_input = QLineEdit(str(self.fantasy_settings['TO']))
-        form_layout.addRow("Fantasy Points for TO:", self.to_input)
+        self.stat_inputs = {}
+        for stat_key, stat_name in stats:
+            label = StyledQLabel(f"{stat_name} Fantasy Points:", font_size=12, color='#2C3E50')
+            input_field = QLineEdit(str(self.fantasy_settings[stat_key]))
+            input_field.setStyleSheet("width: 100px;")
+            form_layout.addRow(label, input_field)
+            self.stat_inputs[stat_key] = input_field
 
         layout.addLayout(form_layout)
 
-        # Save Button
-        save_button = QPushButton("Save Settings")
+        # Save Button with improved styling
+        save_button = StyledQPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings)
         layout.addWidget(save_button)
 
@@ -87,13 +161,8 @@ class FantasyDashboard(QMainWindow):
     def save_settings(self):
         """Save the custom fantasy points settings."""
         try:
-            self.fantasy_settings['PTS'] = float(self.pts_input.text())
-            self.fantasy_settings['REB'] = float(self.reb_input.text())
-            self.fantasy_settings['AST'] = float(self.ast_input.text())
-            self.fantasy_settings['STL'] = float(self.stl_input.text())
-            self.fantasy_settings['BLK'] = float(self.blk_input.text())
-            self.fantasy_settings['TO'] = float(self.to_input.text())
-
+            for stat_key in self.fantasy_settings.keys():
+                self.fantasy_settings[stat_key] = float(self.stat_inputs[stat_key].text())
             print("Settings saved successfully.")
         except ValueError:
             print("Invalid input. Please enter numeric values.")
@@ -115,54 +184,76 @@ class FantasyDashboard(QMainWindow):
         self.tabs.addTab(self.projections_tab, "Per-Game Projections")
 
     def setup_player_stats_tab(self):
+        """Enhanced player stats tab with better layout and styling"""
         layout = QVBoxLayout(self.player_stats_tab)
+        layout.setSpacing(15)
 
-        # Search Bars for Player 1 and Player 2
-        search_layout_1 = QHBoxLayout()
+        # Title for the comparison section
+        title = StyledQLabel("Player Comparison", font_size=16, bold=True, color='#2C3E50')
+        layout.addWidget(title)
+
+        # Search section with improved layout
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        
+        # Player 1 search
+        player1_section = QVBoxLayout()
+        player1_section.addWidget(StyledQLabel("Player 1", bold=True))
         self.search_bar_1 = QLineEdit()
         self.search_bar_1.setPlaceholderText("Search Player 1...")
-        self.search_completer_1 = QCompleter(self.player_names)
-        self.search_completer_1.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.search_bar_1.setCompleter(self.search_completer_1)
-        search_button_1 = QPushButton("Search Player 1")
-        search_button_1.clicked.connect(lambda: self.search_player(1))
-        search_layout_1.addWidget(self.search_bar_1)
-        search_layout_1.addWidget(search_button_1)
-        layout.addLayout(search_layout_1)
+        player1_section.addWidget(self.search_bar_1)
+        search_layout.addLayout(player1_section)
 
-        search_layout_2 = QHBoxLayout()
+        # Player 2 search
+        player2_section = QVBoxLayout()
+        player2_section.addWidget(StyledQLabel("Player 2", bold=True))
         self.search_bar_2 = QLineEdit()
         self.search_bar_2.setPlaceholderText("Search Player 2...")
-        self.search_completer_2 = QCompleter(self.player_names)
-        self.search_completer_2.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.search_bar_2.setCompleter(self.search_completer_2)
-        search_button_2 = QPushButton("Search Player 2")
-        search_button_2.clicked.connect(lambda: self.search_player(2))
-        search_layout_2.addWidget(self.search_bar_2)
-        search_layout_2.addWidget(search_button_2)
-        layout.addLayout(search_layout_2)
+        player2_section.addWidget(self.search_bar_2)
+        search_layout.addLayout(player2_section)
 
-        # Dropdown for metric selection
-        self.metric_label = QLabel("Select Metric:")
-        layout.addWidget(self.metric_label)
+        layout.addWidget(search_container)
 
+        # Dropdowns section
+        dropdown_container = QHBoxLayout()
+        
+        metric_section = QVBoxLayout()
+        metric_section.addWidget(StyledQLabel("Select Metric", bold=True))
         self.metric_dropdown = QComboBox()
         self.metric_dropdown.addItems(["Fantasy Score", "Points Per Game", "Assists", "Rebounds", "Efficiency", "Steals", "Blocks"])
-        self.metric_dropdown.currentIndexChanged.connect(self.update_plot)
-        layout.addWidget(self.metric_dropdown)
+        metric_section.addWidget(self.metric_dropdown)
+        dropdown_container.addLayout(metric_section)
 
-        self.normalization_label = QLabel("Normalize Data By:")
-        layout.addWidget(self.normalization_label)
-
+        normalization_section = QVBoxLayout()
+        normalization_section.addWidget(StyledQLabel("Normalize Data By", bold=True))
         self.normalization_dropdown = QComboBox()
         self.normalization_dropdown.addItems(["Season Year", "Career Year"])
-        self.normalization_dropdown.currentIndexChanged.connect(self.update_plot)
-        layout.addWidget(self.normalization_dropdown)
+        normalization_section.addWidget(self.normalization_dropdown)
+        dropdown_container.addLayout(normalization_section)
 
-        # Matplotlib figure for comparison
-        self.figure = Figure()
+        layout.addLayout(dropdown_container)
+
+        # Matplotlib figure for comparison with better styling
+        plt.style.use('seaborn-v0_8-whitegrid')
+        self.figure = Figure(figsize=(10, 6), dpi=100, facecolor='#ECF0F1')
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
+
+        # Connect dropdowns to update function
+        self.metric_dropdown.currentIndexChanged.connect(self.update_plot)
+        self.normalization_dropdown.currentIndexChanged.connect(self.update_plot)
+
+        # Search buttons
+        search_buttons_layout = QHBoxLayout()
+        search_button_1 = StyledQPushButton("Search Player 1")
+        search_button_1.clicked.connect(lambda: self.search_player(1))
+        search_buttons_layout.addWidget(search_button_1)
+
+        search_button_2 = StyledQPushButton("Search Player 2")
+        search_button_2.clicked.connect(lambda: self.search_player(2))
+        search_buttons_layout.addWidget(search_button_2)
+
+        layout.addLayout(search_buttons_layout)
 
     def setup_projections_tab(self):
         layout = QVBoxLayout(self.projections_tab)
@@ -203,7 +294,7 @@ class FantasyDashboard(QMainWindow):
                 self.data_2 = self.load_player_data(matched_player)
             self.update_plot()
     def create_position_filter_tab(self):
-        """Create the Position Filtering tab."""
+        """Create the Position Filtering tab with player navigation."""
         position_filter_widget = QWidget()
         layout = QVBoxLayout(position_filter_widget)
 
@@ -218,6 +309,7 @@ class FantasyDashboard(QMainWindow):
 
         # Player list display
         self.player_list_widget = QListWidget()
+        self.player_list_widget.itemDoubleClicked.connect(self.navigate_to_player_stats)
         layout.addWidget(self.player_list_widget)
 
         # Load all players initially
@@ -225,6 +317,17 @@ class FantasyDashboard(QMainWindow):
 
         # Add this tab to the main widget
         self.tabs.addTab(position_filter_widget, "Position Filter")
+
+    def navigate_to_player_stats(self, item):
+        """Navigate to the Compare Players tab and search for the selected player."""
+        # Switch to the Compare Players tab (index 1 in the current setup)
+        self.tabs.setCurrentIndex(0)
+        
+        # Fill the first search bar with the selected player's name
+        self.search_bar_1.setText(item.text())
+        
+        # Trigger the search for the player
+        self.search_player(1)
 
 
     def load_all_players(self):
