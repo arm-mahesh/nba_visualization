@@ -107,6 +107,7 @@ class FantasyDashboard(QMainWindow):
 
         # Extract player names and initialize UI
         self.player_names = [player['name'] for player in self.player_positions]
+        self.all_players = players.get_active_players()
         # Tab widget for switching pages
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -171,7 +172,6 @@ class FantasyDashboard(QMainWindow):
         """Create the Player Stats tab."""
         player_stats_widget = QWidget()
         layout = QVBoxLayout(player_stats_widget)
-        self.all_players = players.get_active_players()
 
         # Player Stats Tab
         self.player_stats_tab = QWidget()
@@ -184,7 +184,7 @@ class FantasyDashboard(QMainWindow):
         self.tabs.addTab(self.projections_tab, "Per-Game Projections")
 
     def setup_player_stats_tab(self):
-        """Enhanced player stats tab with better layout and styling"""
+        """Enhanced player stats tab with better layout, styling, and autocomplete"""
         layout = QVBoxLayout(self.player_stats_tab)
         layout.setSpacing(15)
 
@@ -196,19 +196,31 @@ class FantasyDashboard(QMainWindow):
         search_container = QWidget()
         search_layout = QHBoxLayout(search_container)
         
-        # Player 1 search
+        # Player 1 search with autocomplete
         player1_section = QVBoxLayout()
         player1_section.addWidget(StyledQLabel("Player 1", bold=True))
         self.search_bar_1 = QLineEdit()
         self.search_bar_1.setPlaceholderText("Search Player 1...")
+        
+        # Add autocomplete for player 1
+        player1_completer = QCompleter(self.player_names)
+        player1_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.search_bar_1.setCompleter(player1_completer)
+        
         player1_section.addWidget(self.search_bar_1)
         search_layout.addLayout(player1_section)
 
-        # Player 2 search
+        # Player 2 search with autocomplete
         player2_section = QVBoxLayout()
         player2_section.addWidget(StyledQLabel("Player 2", bold=True))
         self.search_bar_2 = QLineEdit()
         self.search_bar_2.setPlaceholderText("Search Player 2...")
+        
+        # Add autocomplete for player 2
+        player2_completer = QCompleter(self.player_names)
+        player2_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.search_bar_2.setCompleter(player2_completer)
+        
         player2_section.addWidget(self.search_bar_2)
         search_layout.addLayout(player2_section)
 
@@ -293,6 +305,7 @@ class FantasyDashboard(QMainWindow):
                 self.current_player_2 = matched_player
                 self.data_2 = self.load_player_data(matched_player)
             self.update_plot()
+
     def create_position_filter_tab(self):
         """Create the Position Filtering tab with player navigation."""
         position_filter_widget = QWidget()
